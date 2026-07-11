@@ -16,6 +16,7 @@ use crate::registers::{EventStatus, StatusByte, StatusRegisters};
 ///
 /// * `SYSTem:ERRor:[NEXT]?`
 /// * `SYSTem:ERRor:COUNt?`
+/// * `SYSTem:ERRor:ALL?`
 pub trait ErrorCommands {
     fn error_queue(&mut self) -> &mut impl ErrorQueue;
 
@@ -28,6 +29,18 @@ pub trait ErrorCommands {
             Ok((error.number(), error.into()))
         } else {
             Ok((0, ""))
+        }
+    }
+
+    fn system_error_all(&mut self) -> Result<Vec<(i16, &'static str)>, Error> {
+        let errors = self.error_queue().all();
+        if !errors.is_empty() {
+            Ok(errors
+                .iter()
+                .map(|error| (error.number(), (*error).into()))
+                .collect::<Vec<_>>())
+        } else {
+            Ok(vec![(0, "")])
         }
     }
 }
