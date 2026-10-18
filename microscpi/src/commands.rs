@@ -1,5 +1,5 @@
 //! This module containts implementations of SCPI standard commands.
-use crate::{Characters, Error, ErrorHandler, ErrorQueue, SCPI_STD_VERSION};
+use crate::{Characters, Error, ErrorHandler, ErrorQueue, Response, SCPI_STD_VERSION, Write};
 
 #[cfg(feature = "registers")]
 use crate::registers::{EventStatus, StatusByte, StatusRegisters};
@@ -32,15 +32,19 @@ pub trait ErrorCommands {
         }
     }
 
-    fn system_error_all(&mut self) -> Result<Vec<(i16, &'static str)>, Error> {
-        let errors = self.error_queue().all();
-        if !errors.is_empty() {
-            Ok(errors
-                .iter()
-                .map(|error| (error.number(), (*error).into()))
-                .collect::<Vec<_>>())
+    fn system_error_all(&mut self) -> Result<impl Response, Error> {
+        Ok(ErrorList(self.error_queue().all()))
+    }
+}
+
+struct ErrorList<E>(E);
+
+impl<E: core::ops::Deref<Target = [Error]>> Response for ErrorList<E> {
+    fn write_response(&self, f: &mut impl Write) -> Result<(), Error> {
+        if self.0.is_empty() {
+            (0, "").write_response(f)
         } else {
-            Ok(vec![(0, "")])
+            self.0.write_response(f)
         }
     }
 }
